@@ -22,14 +22,7 @@ By default, it installs the command to:
 /usr/bin/svn_p
 ```
 
-If your user needs sudo permission, `install.sh` will call `sudo install`
-automatically.
-
-You can also choose another target path:
-
-```bash
-./install.sh ~/.local/bin/svn_p
-```
+`install.sh` uses `sudo`, so you may need to enter your password.
 
 ## Usage
 
