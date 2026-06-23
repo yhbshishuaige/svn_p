@@ -18,6 +18,8 @@ chmod +x ./install.sh
 svn_p --help
 ```
 
+clone到指定目录
+
 ```bash
 svn_p <git-repo-url> <target-dir> --export=<subdir>
 ```
@@ -47,3 +49,5 @@ cp "$tmp"/subdir target-dir
 rm -rf "$tmp"
 ```
 删除临时目录
+
+![](./img/c.gif)
