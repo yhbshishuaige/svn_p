@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'USAGE'
+Usage:
+  svn_p <git-repo-url> <target-dir> --export=<repo-subdir>
+
+Example:
+  svn_p https://github.com/sajjadium/ctf-archives.git ./try --export=/ctfs/L3HCTF/2025
+USAGE
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ $# -lt 3 ]]; then
+  usage
+  exit 2
+fi
+
+repo_url=$1
+target_dir=$2
+shift 2
+
+export_path=
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --export=*)
+      export_path=${1#--export=}
+      ;;
+    --export)
+      shift
+      if [[ $# -eq 0 ]]; then
+        echo "svn_p: --export needs a path" >&2
+        usage
+        exit 2
+      fi
+      export_path=$1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "svn_p: unknown argument: $1" >&2
+      usage
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+if [[ -z "$export_path" ]]; then
+  echo "svn_p: missing --export=<repo-subdir>" >&2
+  usage
+  exit 2
+fi
+
+if ! command -v git >/dev/null 2>&1; then
+  echo "svn_p: git is required but was not found in PATH" >&2
+  exit 127
+fi
+
+# Git sparse-checkout paths are repository-relative, so accept either
+# "/ctfs/L3HCTF/2025" or "ctfs/L3HCTF/2025" from the user.
+export_path=${export_path#/}
+export_path=${export_path%/}
+
+if [[ -z "$export_path" ]]; then
+  echo "svn_p: export path cannot be empty or /" >&2
+  exit 2
+fi
+
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/svn_p.XXXXXX")
+cleanup() {
+  rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+git clone --depth 1 --filter=blob:none --sparse "$repo_url" "$tmp"
+git -C "$tmp" sparse-checkout set "$export_path"
+
+mkdir -p "$target_dir"
+if command -v rsync >/dev/null 2>&1; then
+  rsync -a "$tmp/$export_path/" "$target_dir/"
+else
+  cp -a "$tmp/$export_path/." "$target_dir/"
+fi
+
+echo "Exported $repo_url:$export_path -> $target_dir"
